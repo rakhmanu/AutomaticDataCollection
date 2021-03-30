@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<launch>
+  
+    <arg name="gazebo_gui" default="true" />
+
+   
+    <include file="$(find my_simulation)/launch/my_world.launch" >
+        <arg name="gui" value="$(arg gazebo_gui)" />
+    </include> 
+
+    <!--<arg name="gazebo_gui" default="true" />
+    <include file="$(find my_simulation)/launch/my_world.launch" >
+        <arg name="gui" value="$(arg gazebo_gui)" />
+    </include> -->
+
+    <!-- turtlebot navigation: move base, amcl (localisation) -->
+    <include file="$(find turtlebot_gazebo)/launch/amcl_demo.launch" />
+
+    <!-- roadmap (random waypoint generation) -->
+    <include file="$(find rosplan_interface_mapping)/launch/rosplan_roadmap_server.launch" />
+
+	<arg name="domain_path"	default="$(find try_navi)/common/explore_d.pddl" />
+	<arg name="problem_path"	default="$(find try_navi)/common/random_pddl/navigation.pddl" />
+        
+
+	<!-- knowledge base -->
+	<node name="rosplan_knowledge_base" pkg="rosplan_knowledge_base" type="knowledgeBase" respawn="false" output="screen">
+		<param name="domain_path" value="$(find try_navi)/common/explore_d.pddl" />
+		<param name="problem_path" value="$(find try_navi)/common/random_pddl/navigation.pddl" />
+		<param name="use_unknowns" value="false" />
+	</node>
+
+        <!-- planning -->
+	<include file="$(find rosplan_planning_system)/launch/includes/rosplan_planner_interfaces.launch">
+		<arg name="use_problem_topic"    value="false" />
+		<arg name="planner_topic"        value="planner_output" />
+		<arg name="domain_path"          value="$(find try_navi)/common/explore_d.pddl" />
+		<arg name="problem_path"         value="$(find try_navi)/common/random_pddl/navigation.pddl" />
+		<arg name="data_path"            value="$(find try_navi)/common/" />
+		<arg name="planner_command"     value="timeout 10 rosrun ffha ffha -o DOMAIN -f PROBLEM" />
+	</include>
+
+
+	<!-- plan parsing -->
+	<node name="rosplan_parsing_interface" pkg="rosplan_planning_system" type="pddl_simple_plan_parser" respawn="false" output="screen">
+		<param name="knowledge_base" value="rosplan_knowledge_base" />
+		<param name="planner_topic"  value="/rosplan_planner_interface/planner_output" />
+		<param name="plan_topic"     value="complete_plan" />
+	</node>
+
+
+      <!-- plan dispatching -->
+	<node name="rosplan_plan_dispatcher" pkg="rosplan_planning_system" type="pddl_simple_plan_dispatcher" respawn="false" output="screen">
+		<param name="knowledge_base"        value="rosplan_knowledge_base" />
+		<param name="plan_topic"            value="/rosplan_parsing_interface/complete_plan" />
+		<param name="action_dispatch_topic" value="action_dispatch" />
+		<param name="action_feedback_topic" value="action_feedback" />
+	</node>
+
+
+         <node pkg="rosplan_interface_movebase" type="rpmovebase" name="rosplan_interface_movebase" respawn="false" output="screen">
+		<param name="knowledge_base" value="rosplan_knowledge_base" />
+		<param name="action_server" value="/move_base" />
+		<param name="pddl_action_name" value="turtlebot_move" />
+		<param name="action_dispatch_topic" value="/rosplan_plan_dispatcher/action_dispatch" />
+		<param name="action_feedback_topic" value="/rosplan_plan_dispatcher/action_feedback" />
+    </node>
+
+</launch>

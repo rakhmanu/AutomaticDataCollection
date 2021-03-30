@@ -1,0 +1,7 @@
+grid_row:4
+min_obs_n:4
+max_obs_n:4
+repeat_n:2
+pddl_file:navigation.pddl
+"run_cmd:""./sample_launch.sh"""
+change_gazebo:change_gazebo_model_position_script_new.py
